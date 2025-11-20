@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 
 const CinemaSeatBooking = ({
   layout = {
@@ -21,7 +21,7 @@ const CinemaSeatBooking = ({
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Find the type & color for a row
+  // Identify seat type & color for each row
   const getSeatType = (row) => {
     const arr = Object.entries(seatTypes);
     for (let i = 0; i < arr.length; i++) {
@@ -32,7 +32,7 @@ const CinemaSeatBooking = ({
     return { type: f, color: colors[0], ...conf };
   };
 
-  // Build Seat Map
+  // Build seat layout
   const initializeSeats = useMemo(() => {
     const seats = [];
     for (let row = 0; row < layout.rows; row++) {
@@ -56,8 +56,18 @@ const CinemaSeatBooking = ({
     return seats;
   }, [layout, seatTypes, bookedSeats]);
 
-  const [seats, setSeats] = useState(initializeSeats);
-  const [selectedSeats, setSelectedSeats] = useState([]);
+  // Load saved data from localStorage
+  const savedSeats = JSON.parse(localStorage.getItem("cinemaSeats"));
+  const savedSelected = JSON.parse(localStorage.getItem("selectedSeats"));
+
+  const [seats, setSeats] = useState(savedSeats || initializeSeats);
+  const [selectedSeats, setSelectedSeats] = useState(savedSelected || []);
+
+  // Save data to localStorage on change
+  useEffect(() => {
+    localStorage.setItem("cinemaSeats", JSON.stringify(seats));
+    localStorage.setItem("selectedSeats", JSON.stringify(selectedSeats));
+  }, [seats, selectedSeats]);
 
   const colorMap = {
     blue: "bg-blue-100 text-blue-700 border-blue-300",
@@ -120,24 +130,29 @@ const CinemaSeatBooking = ({
 
   const totalPrice = selectedSeats.reduce((t, s) => t + s.price, 0);
 
+  // Booking Handler
   const handleBooking = () => {
     if (selectedSeats.length === 0) return;
 
-    setSeats((prev) =>
-      prev.map((row) =>
-        row.map((seat) =>
-          selectedSeats.some((x) => x.id === seat.id)
-            ? { ...seat, status: "booked", selected: false }
-            : seat
-        )
+    const updatedSeats = seats.map((row) =>
+      row.map((seat) =>
+        selectedSeats.some((x) => x.id === seat.id)
+          ? { ...seat, status: "booked", selected: false }
+          : seat
       )
     );
+
+    setSeats(updatedSeats);
 
     onBookingComplete({
       seats: selectedSeats,
       totalPrice,
       seatIds: selectedSeats.map((s) => s.id),
     });
+
+    // Save booking and clear selection
+    localStorage.setItem("cinemaSeats", JSON.stringify(updatedSeats));
+    localStorage.removeItem("selectedSeats");
 
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 2000);
@@ -157,12 +172,12 @@ const CinemaSeatBooking = ({
         </div>
       )}
 
-      {/* Container */}
+      {/* Main Container */}
       <div className="max-w-4xl mx-auto bg-white shadow-sm border border-gray-200 rounded-2xl p-6">
         <h1 className="text-2xl font-bold text-gray-800 text-center">{title}</h1>
         <p className="text-center text-gray-500 mb-6">{subtitle}</p>
 
-        {/* Screen */}
+        {/* Screen Visual */}
         <div className="mb-8">
           <div className="w-full h-6 bg-gradient-to-b from-gray-200 to-gray-300 rounded-b-2xl shadow-inner" />
           <p className="text-center text-sm text-gray-500 mt-1 tracking-wide">
@@ -170,27 +185,27 @@ const CinemaSeatBooking = ({
           </p>
         </div>
 
-        {/* Seats */}
+        {/* Seats Layout */}
         <div className="overflow-x-auto mb-6">
           <div className="flex flex-col items-center min-w-max">
             {seats.map((row, ri) => {
-              let blocks = [];
+              let sections = [];
               let last = 0;
 
               aislePositions.forEach((a, i) => {
-                blocks.push(renderSection(row, last, a));
-                blocks.push(<div key={`space${i}`} className="w-6" />);
+                sections.push(renderSection(row, last, a));
+                sections.push(<div key={`space${i}`} className="w-6" />);
                 last = a;
               });
 
-              blocks.push(renderSection(row, last, layout.seatPerRow));
+              sections.push(renderSection(row, last, layout.seatPerRow));
 
               return (
                 <div key={ri} className="flex items-center mb-2">
                   <span className="w-6 text-gray-600 font-medium mr-2">
                     {String.fromCharCode(65 + ri)}
                   </span>
-                  {blocks}
+                  {sections}
                 </div>
               );
             })}
@@ -211,8 +226,7 @@ const CinemaSeatBooking = ({
                 </span>
               </p>
               <p className="mb-1">
-                Count:
-                <span className="font-medium ml-1">{selectedSeats.length}</span>
+                Count: <span className="font-medium">{selectedSeats.length}</span>
               </p>
               <p className="text-lg font-bold text-indigo-600">
                 Total: {currency}
