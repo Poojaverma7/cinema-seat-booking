@@ -51,7 +51,7 @@ onBookingComplete={({ seats, totalPrice }) => {
 }}
 
 🌐 Live Demo 
-
+https://cinema-seat-booking-ivory.vercel.app/
 
 🛠️ Tech Stack
 
