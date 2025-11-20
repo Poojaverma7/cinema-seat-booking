@@ -18,14 +18,6 @@ cd cinema-seat-booking
 npm install
 npm start
 
-📁 Project Structure
-src/
- ├── components/
- │    └── CinemaSeatBooking.jsx
- ├── App.jsx
- ├── index.js
- └── styles/
-
 🧠 Usage
 
 Import the component and use it anywhere:
